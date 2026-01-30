@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define UNUSED(v) (void)v
 
@@ -34,5 +35,7 @@ typedef struct {
         exit(-m.code); \
     } \
 } while (0)
+
+#define streq(s1, s2) (strcmp(s1, s2) == 0)
 
 #endif

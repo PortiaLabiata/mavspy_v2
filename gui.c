@@ -126,6 +126,26 @@ static inline char *_draw_devices(void) {
     return NULL;
 }
 
+static void _draw_row(char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+
+    char *_fmt = strdup(fmt);
+    for (char *str2 = _fmt; ; str2 = NULL) {
+        char *token = strtok(str2, " ");
+        if (!token)
+            break;
+        if (streq(token, "%s")) {
+            _label_printf(NULL, "%s", va_arg(ap, char*));
+        } else if (streq(token, "%d")) {
+            _label_printf(NULL, "%d", va_arg(ap, int));
+        } else if (streq(token, "%f")) {
+            _label_printf(NULL, "%f", va_arg(ap, double));
+        }
+    }
+    free(_fmt);
+}
+
 void gui_draw_window(const pkt_list_t *ptr) {
     if (nk_begin(ctx, "Messages", 
         nk_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT), 0)) {
@@ -137,9 +157,19 @@ void gui_draw_window(const pkt_list_t *ptr) {
             set_state(STATE_CONNECTED);
         }
         
-        nk_layout_row_static(ctx, 30, 80, 1);
+        nk_layout_row_static(ctx, 30, 80, 5);
+        _draw_row("%s %s %s %s %s",
+                "SRC SOCKET",
+                "DST SOCKET",
+                "MSGID",
+                "SYSID",
+                "COMPID");
         while (ptr) {
-            _label_printf(NULL, "%d", ptr->msg.msgid);
+            const mavlink_message_t *msg = &ptr->msg;
+            _draw_row("%d %d %d %d %d",
+                    0, 0, msg->msgid,
+                    msg->sysid,
+                    msg->compid);
             ptr = ptr->next;
         }
     }
