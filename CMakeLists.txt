@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.13)
 project(mavspyv2 LANGUAGES C)
 
 add_executable(${PROJECT_NAME} main.c gui.c
-    capture.c)
+    capture.c fsm.c)
 target_link_libraries(${PROJECT_NAME} PUBLIC pcap)
 target_compile_options(${PROJECT_NAME} PUBLIC 
     -Wno-address-of-packed-member)

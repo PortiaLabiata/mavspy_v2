@@ -1,5 +1,7 @@
+#include <string.h>
 #include <stdbool.h>
 #include <stdarg.h>
+#include <assert.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
 
@@ -17,6 +19,8 @@
 
 #include "common.h"
 #include "gui.h"
+#include "fsm.h"
+#include "capture.h"
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
@@ -27,12 +31,6 @@ static struct nk_colorf bg;
 
 SDL_Window *win;
 SDL_GLContext glContext;
-
-typedef enum {
-    _STATE_INIT,
-    _STATE_PAUSED,
-    _STATE_CAPTURING,
-} _gui_state_t;
 
 msg_t gui_init(void) {
     SDL_SetHint(SDL_HINT_VIDEO_HIGHDPI_DISABLED, "0");
@@ -115,6 +113,10 @@ static inline char *_draw_devices(void) {
         while (!ret) {
             ret = cap_dev_next(NULL);
             if (_button_printf("%s", dev_name)) {
+               msg_t ret = cap_init(dev_name);
+               ASSERT_OK(ret, "Could not init pcap");
+
+               set_state(STATE_CONNECTED);
                nk_end(ctx);
                return dev_name; 
             }
@@ -127,15 +129,26 @@ static inline char *_draw_devices(void) {
 void gui_draw_window(const pkt_list_t *ptr) {
     if (nk_begin(ctx, "Messages", 
         nk_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT), 0)) {
-        nk_layout_row_static(ctx, 30, 80, 1);
+        nk_layout_row_static(ctx, 30, 80, 2);
+        if (nk_button_label(ctx, "Run")) {
+            set_state(STATE_CAPTURING);
+        }
+        if (nk_button_label(ctx, "Pause")) {
+            set_state(STATE_CONNECTED);
+        }
         
+        nk_layout_row_static(ctx, 30, 80, 1);
         while (ptr) {
             _label_printf(NULL, "%d", ptr->msg.msgid);
             ptr = ptr->next;
         }
     }
     nk_end(ctx);
-    _draw_devices();
+    
+    global_state_t state = get_state();
+    if (state == STATE_INIT) {
+        _draw_devices();
+    }
 }
 
 void gui_end_frame(void) {
