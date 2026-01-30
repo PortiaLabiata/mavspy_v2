@@ -18,8 +18,8 @@
 #include "common.h"
 #include "gui.h"
 
-#define WINDOW_WIDTH 1200
-#define WINDOW_HEIGHT 800
+#define WINDOW_WIDTH 800
+#define WINDOW_HEIGHT 600
 
 static int win_width, win_height;
 static struct nk_context *ctx;
@@ -73,7 +73,7 @@ msg_t gui_init(void) {
 bool gui_begin_frame(void) {
     SDL_Event evt;
     nk_input_begin(ctx);
-    if (SDL_PollEvent(&evt)) {
+    while (SDL_PollEvent(&evt)) {
         if (evt.type == SDL_QUIT) return false;
         nk_sdl_handle_event(&evt);
     }
@@ -81,37 +81,61 @@ bool gui_begin_frame(void) {
     return true;
 }
 
-static void _label_printf(const char *fmt, ...) {
+static void _label_printf(int *selected, const char *fmt, ...) {
     static char buffer[1024] = {0};
     va_list ap;
     va_start(ap, fmt);
     vsnprintf(buffer, 1024, fmt, ap); 
-    nk_label(ctx, buffer, NK_TEXT_LEFT);
+
+    if (selected) {
+        nk_selectable_label(ctx, buffer, NK_TEXT_LEFT, selected);
+    } else {
+        nk_label(ctx, buffer, NK_TEXT_LEFT);
+    }
     va_end(ap);
 }
 
-static inline void _draw_devices(void) {
-    char *dev_name = NULL;
-    int ret = cap_dev_next(&dev_name);
-    while (!ret) {
-        ret = cap_dev_next(NULL);
-        _label_printf("%s", dev_name);
+static bool _button_printf(const char *fmt, ...) {
+    static char buffer[1024] = {0};
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(buffer, 1024, fmt, ap); 
+    nk_button_label(ctx, buffer);
+    va_end(ap);
+}
+
+static inline char *_draw_devices(void) {
+    if (nk_begin(ctx, "Interfaces",
+         nk_rect(50, 50, 150, 200), 
+         NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE)) {
+        nk_layout_row_static(ctx, 30, 80, 1);
+
+        char *dev_name = NULL;
+        int ret = cap_dev_next(&dev_name);
+        while (!ret) {
+            ret = cap_dev_next(NULL);
+            if (_button_printf("%s", dev_name)) {
+               nk_end(ctx);
+               return dev_name; 
+            }
+        }
     }
+    nk_end(ctx);
+    return NULL;
 }
 
 void gui_draw_window(const pkt_list_t *ptr) {
-    if (nk_begin(ctx, "Demo", nk_rect(50, 50, 230, 250),
-        NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_SCALABLE |
-        NK_WINDOW_MINIMIZABLE | NK_WINDOW_TITLE)) {
+    if (nk_begin(ctx, "Messages", 
+        nk_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT), 0)) {
         nk_layout_row_static(ctx, 30, 80, 1);
         
-        _draw_devices();
         while (ptr) {
-            _label_printf("%d", ptr->msg.msgid);
+            _label_printf(NULL, "%d", ptr->msg.msgid);
             ptr = ptr->next;
         }
     }
     nk_end(ctx);
+    _draw_devices();
 }
 
 void gui_end_frame(void) {
