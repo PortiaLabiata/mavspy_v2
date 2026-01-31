@@ -37,5 +37,6 @@ typedef struct {
 } while (0)
 
 #define streq(s1, s2) (strcmp(s1, s2) == 0)
+#define debug_printf(...) printf(__VA_ARGS__)
 
 #endif

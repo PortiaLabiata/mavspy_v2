@@ -146,6 +146,39 @@ static void _draw_row(char *fmt, ...) {
     free(_fmt);
 }
 
+static const char *_print_ip(u32_t address, u16_t port) {
+    #define BUFSIZE 3*3+3+5
+    static char buffer[BUFSIZE]; 
+    size_t offset = 0;
+    for (int i = 0; i < 4; i++) {
+       offset += snprintf(buffer+offset,
+               BUFSIZE-offset, "%d.", 
+               (address >> 8*i) & 0xFF); 
+    }
+    // Clear last '.' symbol
+    buffer[--offset] = '\0';
+
+    snprintf(buffer+offset,
+            BUFSIZE-offset, ":%d",
+            port);
+    return buffer;
+}
+
+static inline void _draw_msg(const mavlink_message_t *msg) {
+	const mavlink_message_info_t *info = \
+        mavlink_get_message_info(msg);
+    _draw_row("%d %d %d",
+                msg->msgid,
+                msg->sysid,
+                msg->compid);
+    if (!info) {
+        _label_printf(NULL, "%s", "<NOINFO>");
+    } else {
+        _label_printf(NULL, "%s", info->name);
+    }
+    _label_printf(NULL, "%lx", msg->payload64[0]);
+}
+
 void gui_draw_window(const pkt_list_t *ptr) {
     if (nk_begin(ctx, "Messages", 
         nk_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT), 0)) {
@@ -157,19 +190,28 @@ void gui_draw_window(const pkt_list_t *ptr) {
             set_state(STATE_CONNECTED);
         }
         
-        nk_layout_row_static(ctx, 30, 80, 5);
-        _draw_row("%s %s %s %s %s",
+        nk_layout_row_static(ctx, 30, 150, 8);
+        _draw_row("%s %s %s %s %s %s %s %s",
                 "SRC SOCKET",
                 "DST SOCKET",
+                "UDP LENGTH",
                 "MSGID",
                 "SYSID",
-                "COMPID");
+                "COMPID",
+                "NAME",
+                "PARAMS");
         while (ptr) {
             const mavlink_message_t *msg = &ptr->msg;
-            _draw_row("%d %d %d %d %d",
-                    0, 0, msg->msgid,
-                    msg->sysid,
-                    msg->compid);
+            const pkt_t *pkt = &ptr->pkt;
+            // Has to be two separate calls to _label_printf
+            // or static buffer is rewritten before render
+            _label_printf(NULL, "%s", 
+                    _print_ip(pkt->ip.saddr, pkt->udp.source)); 
+            _label_printf(NULL, "%s", 
+                    _print_ip(pkt->ip.daddr, pkt->udp.dest)); 
+            _label_printf(NULL, "%d",
+                    pkt->udp.uh_ulen);
+            _draw_msg(msg); 
             ptr = ptr->next;
         }
     }

@@ -5,6 +5,8 @@
 #include <netinet/udp.h>
 #include <linux/if_ether.h>
 
+#include <stddef.h>
+#define MAVLINK_USE_MESSAGE_INFO
 #include "mavlink/all/mavlink.h"
 #include "common.h"
 #define MAVLINK_MAX_MSG_LEN 280

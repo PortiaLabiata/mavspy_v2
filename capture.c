@@ -1,4 +1,5 @@
 #include <pcap.h>
+#include <arpa/inet.h>
 #include "capture.h"
 
 struct _cap_ctx {
@@ -22,7 +23,7 @@ msg_t cap_init(const char *dev) {
     }
 
 	pcap_set_snaplen(ctx.handle, 65535);
-	pcap_set_promisc(ctx.handle, 0);
+	pcap_set_promisc(ctx.handle, 1);
 	pcap_set_immediate_mode(ctx.handle, 1);
     pcap_setnonblock(ctx.handle, 1, ctx.ebuf);
 	if (pcap_activate(ctx.handle) != 0) {
@@ -50,7 +51,12 @@ msg_t cap_next(pkt_t *pkt, mavlink_message_t *msg) {
     const pkt_t *_pkt = (const pkt_t*)packet;
     mavlink_status_t status = {0};
     int res = 0;
-    for (size_t i = 0; i < _pkt->udp.uh_ulen; i++) {
+
+    if (_pkt->payload[0] != 0xFE && 
+            _pkt->payload[0] != 0xFD) 
+        return RET_ERR(-1, "not an msg");
+
+    for (size_t i = 0; i < htons(_pkt->udp.uh_ulen)-8; i++) {
         res = mavlink_parse_char(0, _pkt->payload[i], 
                 msg, &status);
 		if (res != MAVLINK_FRAMING_INCOMPLETE) {
@@ -58,7 +64,11 @@ msg_t cap_next(pkt_t *pkt, mavlink_message_t *msg) {
 		}
     }
     if (res == MAVLINK_FRAMING_OK) {
-        memcpy(pkt, packet, header->caplen);
+        memcpy(pkt, packet, sizeof(eth_t)+sizeof(ip_t)+sizeof(udp_t));
+
+        pkt->udp.source = htons(pkt->udp.source);
+        pkt->udp.dest = htons(pkt->udp.dest);
+        pkt->udp.uh_ulen = htons(pkt->udp.uh_ulen)-8;
         return RET_OK();
     } 
     return RET_ERR(-1, "Invalid message");

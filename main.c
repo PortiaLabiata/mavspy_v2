@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
                 ptr = pkt_push(ptr, &pkt, &msg);
             }
         }
-        gui_draw_window(head);
+        gui_draw_window(head->next);
 
         gui_end_frame();
     }
