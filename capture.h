@@ -30,6 +30,7 @@ struct _pkt_list_t {
 typedef struct _pkt_list_t pkt_list_t;
 
 pkt_list_t *pkt_push(pkt_list_t *p, pkt_t *pkt, mavlink_message_t *msg);
+void pkt_clear(pkt_list_t *p);
 
 msg_t cap_init(const char *dev);
 void cap_deinit(void);

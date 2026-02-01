@@ -22,7 +22,7 @@
 #include "fsm.h"
 #include "capture.h"
 
-#define WINDOW_WIDTH 800
+#define WINDOW_WIDTH 1200
 #define WINDOW_HEIGHT 600
 
 static int win_width, win_height;
@@ -164,9 +164,10 @@ static const char *_print_ip(u32_t address, u16_t port) {
     return buffer;
 }
 
-static inline void _draw_msg(const mavlink_message_t *msg) {
+static inline int _draw_msg(const mavlink_message_t *msg) {
 	const mavlink_message_info_t *info = \
         mavlink_get_message_info(msg);
+    int ret = 0;
     _draw_row("%d %d %d",
                 msg->msgid,
                 msg->sysid,
@@ -174,34 +175,106 @@ static inline void _draw_msg(const mavlink_message_t *msg) {
     if (!info) {
         _label_printf(NULL, "%s", "<NOINFO>");
     } else {
-        _label_printf(NULL, "%s", info->name);
+        _label_printf(&ret, "%s", info->name);
     }
-    _label_printf(NULL, "%lx", msg->payload64[0]);
+    return ret;
 }
 
-void gui_draw_window(const pkt_list_t *ptr) {
+static void _draw_msg_params(const mavlink_message_t *msg) {
+    nk_begin(ctx, "Params", 
+        nk_rect(0, WINDOW_HEIGHT/2, 
+        WINDOW_WIDTH, WINDOW_HEIGHT/2), 0);
+    if (!msg) {
+        nk_label(ctx, "NO MESSAGE SELECTED", NK_TEXT_LEFT);
+        goto end;
+    }
+
+	const mavlink_message_info_t *info = \
+        mavlink_get_message_info(msg);
+    if (!info)
+        return;
+	for (size_t i = 0; i < info->num_fields; i++) {
+		const mavlink_field_info_t *field = &info->fields[i];
+
+        nk_layout_row_static(ctx, 30, 150, 2);
+        _label_printf(NULL, "%s", field->name);
+
+		uint8_t *ptr = (uint8_t*)((uint8_t*)msg->payload64 + \
+						(ptrdiff_t)field->wire_offset);
+		switch (field->type) {
+			case MAVLINK_TYPE_INT8_T:
+				_label_printf(NULL, "%d", *(int8_t*)(ptr));
+				break;
+			case MAVLINK_TYPE_CHAR:
+				_label_printf(NULL, "%d", *(char*)(ptr));
+				break;
+			case MAVLINK_TYPE_INT16_T:
+				_label_printf(NULL, "%d", *(int16_t*)(ptr));
+				break;
+			case MAVLINK_TYPE_INT32_T:
+				_label_printf(NULL, "%d", *(int32_t*)(ptr));
+				break;
+			case MAVLINK_TYPE_INT64_T:
+				_label_printf(NULL, "%ld", *(int64_t*)(ptr));
+				break;
+			
+			case MAVLINK_TYPE_FLOAT:
+				_label_printf(NULL, "%f", *(float*)(ptr));
+				break;
+			case MAVLINK_TYPE_DOUBLE:
+				_label_printf(NULL, "%f", *(double*)(ptr));
+				break;
+
+			case MAVLINK_TYPE_UINT8_T:
+				_label_printf(NULL, "%d", *(uint8_t*)(ptr));
+				break;
+			case MAVLINK_TYPE_UINT16_T:
+				_label_printf(NULL, "%d", *(uint16_t*)(ptr));
+				break;
+			case MAVLINK_TYPE_UINT32_T:
+				_label_printf(NULL, "%d", *(uint32_t*)(ptr));
+				break;
+			case MAVLINK_TYPE_UINT64_T:
+				_label_printf(NULL, "%ld", *(uint64_t*)(ptr));
+				break;
+		}
+	}
+end:
+    nk_end(ctx);
+}
+
+void gui_draw_window(pkt_list_t *ptr) {
+    static mavlink_message_t *msg_view = NULL;
     if (nk_begin(ctx, "Messages", 
-        nk_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT), 0)) {
-        nk_layout_row_static(ctx, 30, 80, 2);
-        if (nk_button_label(ctx, "Run")) {
-            set_state(STATE_CAPTURING);
+        nk_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT/2), 0)) {
+        nk_layout_row_static(ctx, 30, 150, 7);
+
+        global_state_t state = get_state();
+        if (state == STATE_CONNECTED || 
+                state == STATE_INIT) {
+           if (nk_button_label(ctx, "Run")) {
+                set_state(STATE_CAPTURING);
+           } 
+        } else if (state == STATE_CAPTURING) {
+            if (nk_button_label(ctx, "Pause")) {
+                set_state(STATE_CONNECTED);
+            }
         }
-        if (nk_button_label(ctx, "Pause")) {
-            set_state(STATE_CONNECTED);
+
+        if (nk_button_label(ctx, "Clear")) {
         }
         
-        nk_layout_row_static(ctx, 30, 150, 8);
-        _draw_row("%s %s %s %s %s %s %s %s",
+        nk_layout_row_static(ctx, 30, 150, 7);
+        _draw_row("%s %s %s %s %s %s %s",
                 "SRC SOCKET",
                 "DST SOCKET",
                 "UDP LENGTH",
                 "MSGID",
                 "SYSID",
                 "COMPID",
-                "NAME",
-                "PARAMS");
+                "NAME");
         while (ptr) {
-            const mavlink_message_t *msg = &ptr->msg;
+            mavlink_message_t *msg = &ptr->msg;
             const pkt_t *pkt = &ptr->pkt;
             // Has to be two separate calls to _label_printf
             // or static buffer is rewritten before render
@@ -211,11 +284,14 @@ void gui_draw_window(const pkt_list_t *ptr) {
                     _print_ip(pkt->ip.daddr, pkt->udp.dest)); 
             _label_printf(NULL, "%d",
                     pkt->udp.uh_ulen);
-            _draw_msg(msg); 
+            if (_draw_msg(msg)) {
+               msg_view = msg; 
+            } 
             ptr = ptr->next;
         }
     }
     nk_end(ctx);
+    _draw_msg_params(msg_view);
     
     global_state_t state = get_state();
     if (state == STATE_INIT) {

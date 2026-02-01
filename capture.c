@@ -89,6 +89,14 @@ pkt_list_t *pkt_push(pkt_list_t *p, pkt_t *pkt,
     return p->next;
 }
 
+void pkt_clear(pkt_list_t *p) {
+    while (p) {
+        pkt_list_t *next = p->next;
+        free(p);
+        p = next;
+    }
+}
+
 int cap_dev_next(char **dev) {
     static char **_dev = NULL;
     static pcap_if_t *head, *ptr;
