@@ -44,7 +44,7 @@ msg_t gui_init(void) {
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 
-    win = SDL_CreateWindow("Demo",
+    win = SDL_CreateWindow("MAVSpy v2.0",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_OPENGL |
                                      SDL_WINDOW_SHOWN | 
@@ -228,8 +228,8 @@ static inline void _draw_controls() {
 
 static inline void _draw_msg_params(const mavlink_message_t *msg) {
     nk_begin(ctx, "Params", 
-        nk_rect(0, WINDOW_HEIGHT/2+CONTROLS_HEIGHT, 
-        WINDOW_WIDTH, WINDOW_HEIGHT/2-CONTROLS_HEIGHT), 
+        nk_rect(0, WINDOW_HEIGHT/2+CONTROLS_HEIGHT+10, 
+        WINDOW_WIDTH, WINDOW_HEIGHT/2-CONTROLS_HEIGHT-10), 
         NK_WINDOW_BORDER | NK_WINDOW_TITLE | NK_WINDOW_BACKGROUND);
     if (!msg) {
         nk_label(ctx, "NO MESSAGE SELECTED", NK_TEXT_LEFT);
