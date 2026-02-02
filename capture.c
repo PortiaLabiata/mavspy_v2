@@ -5,6 +5,7 @@
 struct _cap_ctx {
     char ebuf[PCAP_ERRBUF_SIZE];
     pcap_t *handle;
+    u64_t captured;
 } static ctx;
 
 msg_t cap_init(const char *dev) {
@@ -36,6 +37,7 @@ msg_t cap_init(const char *dev) {
         return RET_ERR(-1, pcap_geterr(ctx.handle));
     }
 	pcap_setfilter(ctx.handle, &bpf);
+    ctx.captured = 0;
     return RET_OK();
 }
 
@@ -69,6 +71,7 @@ msg_t cap_next(pkt_t *pkt, mavlink_message_t *msg) {
         pkt->udp.source = htons(pkt->udp.source);
         pkt->udp.dest = htons(pkt->udp.dest);
         pkt->udp.uh_ulen = htons(pkt->udp.uh_ulen)-8;
+        ctx.captured++;
         return RET_OK();
     } 
     return RET_ERR(-1, "Invalid message");
@@ -113,4 +116,8 @@ int cap_dev_next(char **dev) {
         } 
         return 1;
     }
+}
+
+u64_t cap_captured() {
+    return ctx.captured;
 }

@@ -189,7 +189,7 @@ static inline void _draw_controls() {
    if (nk_begin(ctx, "Controls", 
                nk_rect(0, 0, WINDOW_WIDTH, CONTROLS_HEIGHT), 
                NK_WINDOW_BORDER | NK_WINDOW_BACKGROUND | NK_WINDOW_NO_SCROLLBAR      )) {
-        nk_layout_row_static(ctx, BUTTONS_HEIGHT, 70, 7);
+        nk_layout_row_static(ctx, BUTTONS_HEIGHT, 100, 7);
 
         global_state_t state = get_state();
         if (state == STATE_CONNECTED || 
@@ -205,6 +205,10 @@ static inline void _draw_controls() {
 
         if (nk_button_label(ctx, "Clear")) {
         }
+
+        _label_printf(NULL, "STATE: %s", state2str(state));
+        _label_printf(NULL, "CAPTURED:");
+        _label_printf(NULL, "%d", cap_captured());
         
         nk_layout_row_static(ctx, HEADER_HEIGHT, 150, 8);
         _draw_row("%s %s %s %s %s %s %s",
@@ -294,7 +298,7 @@ void gui_draw_window(pkt_list_t *ptr) {
     if (nk_begin(ctx, "Messages", 
         nk_rect(0, CONTROLS_HEIGHT, WINDOW_WIDTH, 
             WINDOW_HEIGHT/2-CONTROLS_HEIGHT), 
-        NK_WINDOW_BORDER | NK_WINDOW_TITLE | NK_WINDOW_BACKGROUND)) {
+        NK_WINDOW_BORDER | NK_WINDOW_BACKGROUND)) {
         
         nk_layout_row_static(ctx, 30, 150, 8);
         while (ptr) {

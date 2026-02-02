@@ -29,3 +29,16 @@ global_state_t get_state() {
     return _state;
 }
 
+const char *state2str(global_state_t state) {
+    switch (state) {
+        case STATE_INIT:
+            return "INIT";
+        case STATE_CONNECTED:
+            return "CONN";
+        case STATE_CAPTURING:
+            return "CAPT";
+        default:
+            return "INVL";
+    }
+}
+

@@ -11,5 +11,6 @@ typedef enum {
 
 void set_state(global_state_t state);
 global_state_t get_state(void);
+const char *state2str(global_state_t state);
 
 #endif

@@ -36,5 +36,6 @@ msg_t cap_init(const char *dev);
 void cap_deinit(void);
 msg_t cap_next(pkt_t *pkt, mavlink_message_t *msg);
 int cap_dev_next(char **dev);
+u64_t cap_captured();
 
 #endif
