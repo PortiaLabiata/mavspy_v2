@@ -22,8 +22,8 @@
 #include "fsm.h"
 #include "capture.h"
 
-#define WINDOW_WIDTH 1200
-#define WINDOW_HEIGHT 600
+#define WINDOW_WIDTH 1366
+#define WINDOW_HEIGHT 768
 
 static int win_width, win_height;
 static struct nk_context *ctx;
@@ -168,22 +168,65 @@ static inline int _draw_msg(const mavlink_message_t *msg) {
 	const mavlink_message_info_t *info = \
         mavlink_get_message_info(msg);
     int ret = 0;
-    _draw_row("%d %d %d",
+    _draw_row("%d %d %d %d",
                 msg->msgid,
                 msg->sysid,
-                msg->compid);
-    if (!info) {
-        _label_printf(NULL, "%s", "<NOINFO>");
-    } else {
-        _label_printf(&ret, "%s", info->name);
+                msg->compid,
+                msg->seq);
+    if (info) {
+        return nk_button_label(ctx, info->name);
     }
-    return ret;
+    else {
+        _label_printf(NULL, "%s", "<NOINFO>");
+        return 0;
+    }
 }
 
-static void _draw_msg_params(const mavlink_message_t *msg) {
+#define BUTTONS_HEIGHT 30
+#define HEADER_HEIGHT 30
+#define CONTROLS_HEIGHT BUTTONS_HEIGHT+HEADER_HEIGHT+10
+static inline void _draw_controls() {
+   if (nk_begin(ctx, "Controls", 
+               nk_rect(0, 0, WINDOW_WIDTH, CONTROLS_HEIGHT), 
+               NK_WINDOW_BORDER | NK_WINDOW_BACKGROUND | NK_WINDOW_NO_SCROLLBAR      )) {
+        nk_layout_row_static(ctx, BUTTONS_HEIGHT, 70, 7);
+
+        global_state_t state = get_state();
+        if (state == STATE_CONNECTED || 
+                state == STATE_INIT) {
+           if (nk_button_label(ctx, "Run")) {
+                set_state(STATE_CAPTURING);
+           } 
+        } else if (state == STATE_CAPTURING) {
+            if (nk_button_label(ctx, "Pause")) {
+                set_state(STATE_CONNECTED);
+            }
+        }
+
+        if (nk_button_label(ctx, "Clear")) {
+        }
+        
+        nk_layout_row_static(ctx, HEADER_HEIGHT, 150, 8);
+        _draw_row("%s %s %s %s %s %s %s",
+                "SRC SOCKET",
+                "DST SOCKET",
+                "UDP LENGTH",
+                "MSGID",
+                "SYSID",
+                "COMPID",
+                "SEQ",
+                "NAME");
+   } 
+   nk_end(ctx);
+}
+
+
+
+static inline void _draw_msg_params(const mavlink_message_t *msg) {
     nk_begin(ctx, "Params", 
-        nk_rect(0, WINDOW_HEIGHT/2, 
-        WINDOW_WIDTH, WINDOW_HEIGHT/2), 0);
+        nk_rect(0, WINDOW_HEIGHT/2+CONTROLS_HEIGHT, 
+        WINDOW_WIDTH, WINDOW_HEIGHT/2-CONTROLS_HEIGHT), 
+        NK_WINDOW_BORDER | NK_WINDOW_TITLE | NK_WINDOW_BACKGROUND);
     if (!msg) {
         nk_label(ctx, "NO MESSAGE SELECTED", NK_TEXT_LEFT);
         goto end;
@@ -245,34 +288,15 @@ end:
 
 void gui_draw_window(pkt_list_t *ptr) {
     static mavlink_message_t *msg_view = NULL;
+
+    _draw_controls();
+
     if (nk_begin(ctx, "Messages", 
-        nk_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT/2), 0)) {
-        nk_layout_row_static(ctx, 30, 150, 7);
-
-        global_state_t state = get_state();
-        if (state == STATE_CONNECTED || 
-                state == STATE_INIT) {
-           if (nk_button_label(ctx, "Run")) {
-                set_state(STATE_CAPTURING);
-           } 
-        } else if (state == STATE_CAPTURING) {
-            if (nk_button_label(ctx, "Pause")) {
-                set_state(STATE_CONNECTED);
-            }
-        }
-
-        if (nk_button_label(ctx, "Clear")) {
-        }
+        nk_rect(0, CONTROLS_HEIGHT, WINDOW_WIDTH, 
+            WINDOW_HEIGHT/2-CONTROLS_HEIGHT), 
+        NK_WINDOW_BORDER | NK_WINDOW_TITLE | NK_WINDOW_BACKGROUND)) {
         
-        nk_layout_row_static(ctx, 30, 150, 7);
-        _draw_row("%s %s %s %s %s %s %s",
-                "SRC SOCKET",
-                "DST SOCKET",
-                "UDP LENGTH",
-                "MSGID",
-                "SYSID",
-                "COMPID",
-                "NAME");
+        nk_layout_row_static(ctx, 30, 150, 8);
         while (ptr) {
             mavlink_message_t *msg = &ptr->msg;
             const pkt_t *pkt = &ptr->pkt;
